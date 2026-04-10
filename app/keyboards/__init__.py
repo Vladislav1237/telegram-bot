@@ -14,6 +14,7 @@ def get_main_menu_keyboard(lang: str = "en", is_admin: bool = False) -> InlineKe
         builder.button(text="💸 Вывести", callback_data="withdraw")
         builder.button(text="🎁 Промокод", callback_data="promo")
         builder.button(text="⚙️ Настройки", callback_data="settings")
+        builder.button(text="🆘 Помощь", callback_data="help")
     else:
         builder.button(text="💰 Balance", callback_data="balance")
         builder.button(text="👥 Referrals", callback_data="referrals")
@@ -21,6 +22,7 @@ def get_main_menu_keyboard(lang: str = "en", is_admin: bool = False) -> InlineKe
         builder.button(text="💸 Withdraw", callback_data="withdraw")
         builder.button(text="🎁 Promo Code", callback_data="promo")
         builder.button(text="⚙️ Settings", callback_data="settings")
+        builder.button(text="🆘 Help", callback_data="help")
     if is_admin:
         builder.button(text="🛠️ Админ-панель", callback_data="admin_panel")
     builder.adjust(2, 2, 2, 1)
@@ -106,6 +108,7 @@ def get_admin_menu_keyboard(lang: str = "en") -> InlineKeyboardMarkup:
         builder.button(text="🎁 Создать промокод", callback_data="admin_promo_create")
         builder.button(text="🏷️ Промокоды", callback_data="admin_promo_list")
         builder.button(text="👥 Пользователи", callback_data="admin_users")
+        builder.button(text="🤝 Спонсоры", callback_data="admin_sponsors")
         builder.button(text="🔙 Выйти", callback_data="main_menu")
     else:
         builder.button(text="📋 Pending Tasks", callback_data="admin_tasks_queue")
@@ -115,6 +118,7 @@ def get_admin_menu_keyboard(lang: str = "en") -> InlineKeyboardMarkup:
         builder.button(text="🎁 Create Promo Code", callback_data="admin_promo_create")
         builder.button(text="🏷️ Promo Codes", callback_data="admin_promo_list")
         builder.button(text="👥 All Users", callback_data="admin_users")
+        builder.button(text="🤝 Sponsors", callback_data="admin_sponsors")
         builder.button(text="🔙 Exit Admin", callback_data="main_menu")
     builder.adjust(2, 2, 2, 2, 1)
     return builder.as_markup()

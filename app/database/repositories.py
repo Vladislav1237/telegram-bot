@@ -9,7 +9,7 @@ from typing import Optional, List
 
 from app.models import (
     User, Task, TaskCompletion, Withdrawal, 
-    PromoCode, PromoCodeUse, AdminLog,
+    PromoCode, PromoCodeUse, AdminLog, Sponsor,
     TaskStatus, WithdrawalStatus, UserStatus
 )
 
@@ -376,3 +376,52 @@ class AdminLogRepository:
             .limit(limit)
         )
         return list(result.scalars().all())
+
+
+class SponsorRepository:
+    """Sponsor repository for database operations."""
+    
+    def __init__(self, session: AsyncSession):
+        self.session = session
+    
+    async def get_by_id(self, sponsor_id: int) -> Optional[Sponsor]:
+        result = await self.session.execute(
+            select(Sponsor).where(Sponsor.id == sponsor_id)
+        )
+        return result.scalar_one_or_none()
+    
+    async def get_all(self) -> List[Sponsor]:
+        result = await self.session.execute(
+            select(Sponsor).order_by(Sponsor.created_at.desc())
+        )
+        return list(result.scalars().all())
+    
+    async def get_active(self) -> List[Sponsor]:
+        result = await self.session.execute(
+            select(Sponsor).where(Sponsor.is_active == True)
+        )
+        return list(result.scalars().all())
+    
+    async def create(self, link: str, title: str = None) -> Sponsor:
+        sponsor = Sponsor(link=link, title=title)
+        self.session.add(sponsor)
+        await self.session.flush()
+        await self.session.refresh(sponsor)
+        return sponsor
+    
+    async def delete(self, sponsor_id: int) -> bool:
+        sponsor = await self.get_by_id(sponsor_id)
+        if sponsor:
+            await self.session.delete(sponsor)
+            await self.session.flush()
+            return True
+        return False
+    
+    async def toggle_status(self, sponsor_id: int) -> Optional[Sponsor]:
+        sponsor = await self.get_by_id(sponsor_id)
+        if sponsor:
+            sponsor.is_active = not sponsor.is_active
+            await self.session.flush()
+            await self.session.refresh(sponsor)
+            return sponsor
+        return None

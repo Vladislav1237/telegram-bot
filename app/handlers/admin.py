@@ -8,7 +8,7 @@ from aiogram.fsm.state import State, StatesGroup
 
 from app.database.repositories import (
     TaskRepository, WithdrawalRepository, UserRepository,
-    PromoCodeRepository, AdminLogRepository
+    PromoCodeRepository, AdminLogRepository, SponsorRepository
 )
 from app.models import TaskStatus, WithdrawalStatus
 from app.keyboards import (
@@ -39,6 +39,9 @@ class AdminStates(StatesGroup):
     waiting_for_task_target = State()
     waiting_for_task_reward = State()
     waiting_for_task_screenshots_count = State()
+    # States for sponsors
+    waiting_for_sponsor_link = State()
+    waiting_for_sponsor_title = State()
 
 
 # ── /admin command ───────────────────────────────────────────────
@@ -525,6 +528,194 @@ async def handle_admin_users(callback: types.CallbackQuery, session, user):
         text += more
 
     await callback.message.edit_text(text, reply_markup=get_back_keyboard("admin_panel"))
+
+
+# ── Admin Sponsors ─────────────────────────────────────────────────
+@router.callback_query(F.data == "admin_sponsors")
+async def handle_admin_sponsors(callback: types.CallbackQuery, session, user):
+    if user.telegram_id not in config.ADMIN_IDS:
+        await callback.answer("⛔️ Access denied.", show_alert=True)
+        return
+
+    lang = get_lang(user)
+    sponsor_repo = SponsorRepository(session)
+    sponsors = await sponsor_repo.get_all()
+
+    lbl_title = "🤝 Управление спонсорами" if lang == "ru" else "🤝 Sponsor Management"
+    lbl_empty = "Спонсоров пока нет." if lang == "ru" else "No sponsors yet."
+    lbl_active = "✅ Активен" if lang == "ru" else "✅ Active"
+    lbl_inactive = "❌ Неактивен" if lang == "ru" else "❌ Inactive"
+    btn_add = "➕ Добавить спонсора" if lang == "ru" else "➕ Add Sponsor"
+    btn_back = "🔙 Назад" if lang == "ru" else "🔙 Back"
+    btn_toggle = "🔄 Статус" if lang == "ru" else "🔄 Toggle"
+    btn_delete = "🗑️ Удалить" if lang == "ru" else "🗑️ Delete"
+
+    text = f"{lbl_title}\n\n"
+    
+    builder = InlineKeyboardBuilder()
+    
+    if not sponsors:
+        text += lbl_empty
+    else:
+        for s in sponsors:
+            status = lbl_active if s.is_active else lbl_inactive
+            title_text = s.title or "N/A"
+            text += f"• {title_text} ({s.link}) — {status}\n"
+            
+            # Add buttons for each sponsor
+            builder.button(text=f"{btn_toggle} #{s.id}", callback_data=f"sponsor_toggle_{s.id}")
+            builder.button(text=f"{btn_delete} #{s.id}", callback_data=f"sponsor_delete_{s.id}")
+    
+    builder.button(text=btn_add, callback_data="admin_sponsor_add")
+    builder.button(text=btn_back, callback_data="admin_panel")
+    builder.adjust(2, 2, 1)  # Two buttons per sponsor, then add and back
+
+    await callback.message.edit_text(text, reply_markup=builder.as_markup())
+
+
+@router.callback_query(F.data == "admin_sponsor_add")
+async def handle_admin_sponsor_add(callback: types.CallbackQuery, state: FSMContext, user):
+    if user.telegram_id not in config.ADMIN_IDS:
+        await callback.answer("⛔️ Access denied.", show_alert=True)
+        return
+
+    lang = get_lang(user)
+    prompt = (
+        "📎 Отправьте ссылку на канал/бот спонсора:\n(например, https://t.me/example)"
+        if lang == "ru"
+        else "📎 Send the sponsor channel/bot link:\n(e.g., https://t.me/example)"
+    )
+    
+    await callback.message.edit_text(prompt)
+    await state.set_state(AdminStates.waiting_for_sponsor_link)
+
+
+@router.message(AdminStates.waiting_for_sponsor_link)
+async def process_sponsor_link(message: types.Message, state: FSMContext, session, user):
+    if user.telegram_id not in config.ADMIN_IDS:
+        return
+
+    lang = get_lang(user)
+    link = message.text.strip()
+    
+    # Validate link
+    if not link.startswith("https://t.me/"):
+        error_msg = (
+            "❌ Неверный формат ссылки. Она должна начинаться с https://t.me/\n"
+            "Попробуйте снова:"
+            if lang == "ru"
+            else "❌ Invalid link format. It must start with https://t.me/\nTry again:"
+        )
+        await message.answer(error_msg)
+        return
+
+    # Save link to state
+    await state.update_data(sponsor_link=link)
+    
+    # Ask for optional title
+    title_prompt = (
+        "📝 Введите название спонсора (необязательно):\n(или отправьте «-» чтобы пропустить)"
+        if lang == "ru"
+        else "📝 Enter sponsor title (optional):\n(or send «-» to skip)"
+    )
+    await message.answer(title_prompt)
+    await state.set_state(AdminStates.waiting_for_sponsor_title)
+
+
+@router.message(AdminStates.waiting_for_sponsor_title)
+async def process_sponsor_title(message: types.Message, state: FSMContext, session, user):
+    if user.telegram_id not in config.ADMIN_IDS:
+        return
+
+    lang = get_lang(user)
+    data = await state.get_data()
+    link = data.get("sponsor_link")
+    title_input = message.text.strip()
+    
+    title = None if title_input == "-" else title_input
+    
+    # Create sponsor
+    sponsor_repo = SponsorRepository(session)
+    sponsor = await sponsor_repo.create(link=link, title=title)
+    
+    # Log action
+    log_repo = AdminLogRepository(session)
+    await log_repo.create(
+        admin_id=user.telegram_id,
+        action="create_sponsor",
+        target_type="sponsor",
+        target_id=sponsor.id,
+        details=f"Link: {link}, Title: {title}"
+    )
+    
+    success_msg = (
+        f"✅ Спонсор добавлен!\n\n"
+        f"Ссылка: {link}\n"
+        f"Название: {title or 'N/A'}\n"
+        f"ID: #{sponsor.id}"
+        if lang == "ru"
+        else f"✅ Sponsor added!\n\n"
+        f"Link: {link}\n"
+        f"Title: {title or 'N/A'}\n"
+        f"ID: #{sponsor.id}"
+    )
+    
+    await message.answer(success_msg, reply_markup=get_admin_menu_keyboard(lang))
+    await state.clear()
+
+
+@router.callback_query(F.data.startswith("sponsor_toggle_"))
+async def handle_sponsor_toggle(callback: types.CallbackQuery, session, user):
+    if user.telegram_id not in config.ADMIN_IDS:
+        await callback.answer("⛔️ Access denied.", show_alert=True)
+        return
+
+    sponsor_id = int(callback.data.split("_")[-1])
+    sponsor_repo = SponsorRepository(session)
+    sponsor = await sponsor_repo.toggle_status(sponsor_id)
+    
+    lang = get_lang(user)
+    if sponsor:
+        status = "✅ Активен" if sponsor.is_active else "❌ Неактивен" if lang == "ru" else "✅ Active" if sponsor.is_active else "❌ Inactive"
+        msg = (
+            f"Статус спонсора изменён на: {status}"
+            if lang == "ru"
+            else f"Sponsor status changed to: {status}"
+        )
+        await callback.answer(msg, show_alert=False)
+        # Refresh the sponsors list
+        await handle_admin_sponsors(callback, session, user)
+    else:
+        await callback.answer("❌ Спонсор не найден", show_alert=True)
+
+
+@router.callback_query(F.data.startswith("sponsor_delete_"))
+async def handle_sponsor_delete(callback: types.CallbackQuery, session, user):
+    if user.telegram_id not in config.ADMIN_IDS:
+        await callback.answer("⛔️ Access denied.", show_alert=True)
+        return
+
+    sponsor_id = int(callback.data.split("_")[-1])
+    sponsor_repo = SponsorRepository(session)
+    success = await sponsor_repo.delete(sponsor_id)
+    
+    lang = get_lang(user)
+    if success:
+        # Log action
+        log_repo = AdminLogRepository(session)
+        await log_repo.create(
+            admin_id=user.telegram_id,
+            action="delete_sponsor",
+            target_type="sponsor",
+            target_id=sponsor_id
+        )
+        
+        msg = "✅ Спонсор удалён" if lang == "ru" else "✅ Sponsor deleted"
+        await callback.answer(msg, show_alert=False)
+        # Refresh the sponsors list
+        await handle_admin_sponsors(callback, session, user)
+    else:
+        await callback.answer("❌ Спонсор не найден", show_alert=True)
 
 
 # ── Admin All Tasks ─────────────────────────────────────────────────

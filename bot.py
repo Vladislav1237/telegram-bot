@@ -20,6 +20,7 @@ from app.handlers import (
     admin,
 )
 from app.middlewares.session import DatabaseSessionMiddleware
+from app.middlewares.sponsor import SponsorSubscribeMiddleware
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -61,6 +62,7 @@ async def main() -> None:
     )
     
     dp.update.middleware(DatabaseSessionMiddleware())
+    dp.update.middleware(SponsorSubscribeMiddleware())
     dp.update.middleware(i18n_middleware)
     
     dp.include_routers(

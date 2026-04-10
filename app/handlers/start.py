@@ -32,6 +32,52 @@ async def handle_start(message: types.Message, session=None, user=None):
     logger.info(f"[START] message.text='{message.text}'")
     logger.info(f"[START] session={session is not None}, user={user}")
     
+    # Проверяем подписку на спонсоров
+    from app.database.repositories import SponsorRepository
+    from app.config_reader import settings
+    from aiogram import Bot
+    
+    bot_check = Bot(token=settings.BOT_TOKEN)
+    
+    try:
+        async with db.async_session_maker() as sess:
+            sponsor_repo = SponsorRepository(sess)
+            active_sponsors = await sponsor_repo.get_active()
+        
+        if active_sponsors:
+            is_subscribed = True
+            user_id = message.from_user.id
+            
+            for sponsor in active_sponsors:
+                username = sponsor.link.replace("https://t.me/", "").replace("@", "")
+                try:
+                    member = await bot_check.get_chat_member(chat_id=username, user_id=user_id)
+                    if member.status in ['left', 'kicked']:
+                        is_subscribed = False
+                        break
+                except Exception:
+                    is_subscribed = False
+                    break
+            
+            if not is_subscribed:
+                # Отправляем требование подписаться
+                keyboard = []
+                text = "🛑 Чтобы пользоваться ботом, необходимо подписаться на наших спонсоров:\n\n"
+                
+                for i, sponsor in enumerate(active_sponsors, 1):
+                    title = sponsor.title or sponsor.link
+                    text += f"{i}. {title}\n"
+                    keyboard.append([types.InlineKeyboardButton(text=f"➤ Подписаться {i}", url=sponsor.link)])
+                
+                keyboard.append([types.InlineKeyboardButton(text="✅ Я подписался", callback_data="check_subscription")])
+                reply_markup = types.InlineKeyboardMarkup(inline_keyboard=keyboard)
+                
+                await message.answer(text, reply_markup=reply_markup)
+                return
+    finally:
+        await bot_check.session.close()
+    
+    # Если подписан или спонсоров нет - показываем выбор языка
     try:
         kb = get_language_keyboard()
         logger.info(f"[START] Keyboard created: {kb}")
@@ -157,4 +203,116 @@ async def handle_settings(callback: types.CallbackQuery):
         )
         
         await callback.message.edit_text(text, reply_markup=builder.as_markup())
+        await callback.answer()
+
+
+@router.callback_query(F.data == "check_subscription")
+async def handle_check_subscription(callback: types.CallbackQuery):
+    """Обработчик кнопки проверки подписки на спонсоров."""
+    from app.database.repositories import UserRepository, SponsorRepository
+    from app.config_reader import settings
+    from aiogram import Bot
+    
+    user_id = callback.from_user.id
+    
+    # Создаем временного бота для проверки
+    bot = Bot(token=settings.BOT_TOKEN)
+    
+    try:
+        async with db.async_session_maker() as session:
+            sponsor_repo = SponsorRepository(session)
+            active_sponsors = await sponsor_repo.get_active()
+        
+        if not active_sponsors:
+            await callback.answer("Подписка не требуется!", show_alert=True)
+            return
+        
+        is_subscribed = True
+        for sponsor in active_sponsors:
+            username = sponsor.link.replace("https://t.me/", "").replace("@", "")
+            try:
+                member = await bot.get_chat_member(chat_id=username, user_id=user_id)
+                if member.status in ['left', 'kicked']:
+                    is_subscribed = False
+                    break
+            except Exception:
+                is_subscribed = False
+                break
+        
+        if is_subscribed:
+            await callback.answer("✅ Подписка подтверждена! Добро пожаловать.", show_alert=True)
+            # Очищаем сообщение с требованием подписки
+            try:
+                await callback.message.delete()
+            except:
+                pass
+            # Показываем главное меню
+            async with db.async_session_maker() as session:
+                user_repo = UserRepository(session)
+                db_user = await user_repo.get_by_telegram_id(user_id)
+                lang = db_user.language_code if db_user else "en"
+                is_admin = user_id in config.ADMIN_IDS
+                await callback.message.answer(
+                    "✅ Вы подписались на всех спонсоров. Теперь вы можете пользоваться ботом!",
+                    reply_markup=get_main_menu_keyboard(lang, is_admin)
+                )
+        else:
+            await callback.answer("❌ Вы еще не подписались на все каналы. Пожалуйста, подпишитесь и нажмите кнопку снова.", show_alert=True)
+            
+    finally:
+        await bot.session.close()
+
+
+@router.callback_query(F.data == "help")
+async def handle_help(callback: types.CallbackQuery):
+    from app.database.repositories import UserRepository
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    
+    async with db.async_session_maker() as session:
+        user_repo = UserRepository(session)
+        db_user = await user_repo.get_by_telegram_id(callback.from_user.id)
+        
+        lang = get_lang(db_user)
+        
+        if lang == "ru":
+            text = (
+                "🆘 **Помощь**\n\n"
+                "📋 **Как работать с ботом:**\n"
+                "1. Нажмите 📋 Задания, чтобы выбрать категорию\n"
+                "2. Выберите задание и выполните условия\n"
+                "3. Для ручной проверки отправьте скриншоты или перешлите сообщение\n"
+                "4. Ожидайте подтверждения от администратора\n\n"
+                "💰 **Баланс:**\n"
+                "- Зарабатывайте TON, выполняя задания\n"
+                "- Минимальный вывод: 1 TON\n"
+                "- Вывод средств в разделе 💸 Вывести\n\n"
+                "👥 **Рефералы:**\n"
+                "- Приглашайте друзей и получайте бонусы\n"
+                "- Ваша реферальная ссылка в разделе 👥 Рефералы\n\n"
+                "❓ **Вопросы?**\n"
+                "Свяжитесь с поддержкой: @support_username"
+            )
+        else:
+            text = (
+                "🆘 **Help**\n\n"
+                "📋 **How to use the bot:**\n"
+                "1. Tap 📋 Tasks to select a category\n"
+                "2. Choose a task and complete the requirements\n"
+                "3. For manual check, send screenshots or forward a message\n"
+                "4. Wait for admin approval\n\n"
+                "💰 **Balance:**\n"
+                "- Earn TON by completing tasks\n"
+                "- Minimum withdrawal: 1 TON\n"
+                "- Withdraw funds in 💸 Withdraw section\n\n"
+                "👥 **Referrals:**\n"
+                "- Invite friends and get bonuses\n"
+                "- Your referral link in 👥 Referrals section\n\n"
+                "❓ **Questions?**\n"
+                "Contact support: @support_username"
+            )
+        
+        builder = InlineKeyboardBuilder()
+        builder.button(text="🔙 Back", callback_data="main_menu")
+        
+        await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="Markdown")
         await callback.answer()
