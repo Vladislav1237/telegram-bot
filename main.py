@@ -35,12 +35,6 @@ async def main():
     setup_middlewares(dp)
     logger.info("Middlewares setup complete")
     
-    # Test handler at dp level - AFTER middlewares
-    @dp.message()
-    async def test_handler(message: types.Message):
-        logger.info(f">>> TEST HANDLER CAUGHT: {message.from_user.id} - {message.text}")
-        await message.answer("🌐 Выберите язык / Choose language:")
-    
     # Register handlers AFTER middlewares
     from app.handlers import register_handlers
     register_handlers(dp)

@@ -2,7 +2,7 @@
 Start command, language selection, settings, and main menu handler.
 """
 import logging
-from aiogram import Router, F, types
+from aiogram import Router, F, types, Bot
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.exceptions import TelegramBadRequest
@@ -34,10 +34,8 @@ async def handle_start(message: types.Message, session=None, user=None):
     
     # Проверяем подписку на спонсоров
     from app.database.repositories import SponsorRepository
-    from app.config_reader import settings
-    from aiogram import Bot
     
-    bot_check = Bot(token=settings.BOT_TOKEN)
+    bot_check = Bot(token=config.BOT_TOKEN)
     
     try:
         async with db.async_session_maker() as sess:

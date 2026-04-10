@@ -209,3 +209,17 @@ class AdminLog(Base):
     
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class Sponsor(Base):
+    """Sponsor model."""
+    __tablename__ = "sponsors"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    title = Column(String(255), nullable=False)
+    link = Column(String(512), nullable=True)
+    description = Column(Text, nullable=True)
+    is_active = Column(Boolean, default=True)
+    
+    # Timestamps
+    created_at = Column(DateTime, default=datetime.utcnow)
