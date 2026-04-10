@@ -1,0 +1,58 @@
+# English translations
+msgid ""
+msgstr ""
+"Project-Id-Version: 1.0\n"
+"Language: en\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "💰 Balance"
+msgstr "💰 Balance"
+
+msgid "👥 Referrals"
+msgstr "👥 Referrals"
+
+msgid "📋 Tasks"
+msgstr "📋 Tasks"
+
+msgid "💸 Withdraw"
+msgstr "💸 Withdraw"
+
+msgid "🎁 Promo Code"
+msgstr "🎁 Promo Code"
+
+msgid "📊 Statistics"
+msgstr "📊 Statistics"
+
+msgid "🔙 Back"
+msgstr "🔙 Back"
+
+msgid "📝 New Task"
+msgstr "📝 New Task"
+
+msgid "📜 My Tasks"
+msgstr "📜 My Tasks"
+
+msgid "💳 Create Withdrawal"
+msgstr "💳 Create Withdrawal"
+
+msgid "📜 Withdrawal History"
+msgstr "📜 Withdrawal History"
+
+msgid "📤 Share Link"
+msgstr "📤 Share Link"
+
+msgid "📋 Pending Tasks"
+msgstr "📋 Pending Tasks"
+
+msgid "💸 Pending Withdrawals"
+msgstr "💸 Pending Withdrawals"
+
+msgid "🎁 Create Promo Code"
+msgstr "🎁 Create Promo Code"
+
+msgid "👥 All Users"
+msgstr "👥 All Users"
+
+msgid "🔙 Exit Admin"
+msgstr "🔙 Exit Admin"

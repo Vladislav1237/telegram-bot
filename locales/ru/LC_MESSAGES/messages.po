@@ -1,0 +1,58 @@
+# Russian translations
+msgid ""
+msgstr ""
+"Project-Id-Version: 1.0\n"
+"Language: ru\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "💰 Balance"
+msgstr "💰 Баланс"
+
+msgid "👥 Referrals"
+msgstr "👥 Рефералы"
+
+msgid "📋 Tasks"
+msgstr "📋 Задания"
+
+msgid "💸 Withdraw"
+msgstr "💸 Вывод"
+
+msgid "🎁 Promo Code"
+msgstr "🎁 Промокод"
+
+msgid "📊 Statistics"
+msgstr "📊 Статистика"
+
+msgid "🔙 Back"
+msgstr "🔙 Назад"
+
+msgid "📝 New Task"
+msgstr "📝 Новое задание"
+
+msgid "📜 My Tasks"
+msgstr "📜 Мои задания"
+
+msgid "💳 Create Withdrawal"
+msgstr "💳 Создать вывод"
+
+msgid "📜 Withdrawal History"
+msgstr "📜 История выводов"
+
+msgid "📤 Share Link"
+msgstr "📤 Поделиться"
+
+msgid "📋 Pending Tasks"
+msgstr "📋 Ожидающие задания"
+
+msgid "💸 Pending Withdrawals"
+msgstr "💸 Ожидающие выводы"
+
+msgid "🎁 Create Promo Code"
+msgstr "🎁 Создать промокод"
+
+msgid "👥 All Users"
+msgstr "👥 Все пользователи"
+
+msgid "🔙 Exit Admin"
+msgstr "🔙 Выйти из админки"
