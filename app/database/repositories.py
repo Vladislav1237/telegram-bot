@@ -164,12 +164,14 @@ class TaskRepository:
         )
         return result.scalar_one_or_none()
     
-    async def create_completion(self, user_id: int, task_id: int, screenshot_file_id: str = None) -> TaskCompletion:
+    async def create_completion(self, user_id: int, task_id: int, screenshot_file_id: str = None, forwarded_from_chat_id: int = None, screenshots_count: int = 0) -> TaskCompletion:
         completion = TaskCompletion(
             user_id=user_id,
             task_id=task_id,
             status=TaskStatus.PENDING,
-            screenshot_file_id=screenshot_file_id
+            screenshot_file_id=screenshot_file_id,
+            forwarded_from_chat_id=forwarded_from_chat_id,
+            screenshots_count=screenshots_count
         )
         self.session.add(completion)
         await self.session.flush()

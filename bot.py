@@ -2,19 +2,24 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 
-import aiosqlite
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram_i18n import I18nMiddleware
-from aiogram_i18n.middlewares import FluentRuntimeMiddleware
-from aiogram_i18n.utils import get_locale
+from aiogram_i18n.cores import FluentRuntimeCore
 
 from config_reader import settings
-from database.engine import engine, BaseModel
-from handlers import admin, economy, tasks, user
-from middlewares.db import DbSessionMiddleware
-from utils.scheduler import scheduler
+from database.engine import engine, BaseModel, async_session_maker
+from app.handlers import (
+    start,
+    balance,
+    referral,
+    tasks,
+    withdraw,
+    promo,
+    admin,
+)
+from app.middlewares.session import DatabaseSessionMiddleware
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -23,16 +28,14 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(dispatcher: Dispatcher):
     # Startup
-    await engine.begin()
-    await BaseModel.metadata.create_all(bind=engine.sync_engine)
+    async with engine.begin() as conn:
+        await conn.run_sync(BaseModel.metadata.create_all)
     
-    scheduler.start()
     logger.info("Bot started")
     
     yield
     
     # Shutdown
-    scheduler.shutdown()
     await engine.dispose()
     logger.info("Bot stopped")
 
@@ -45,31 +48,33 @@ async def main() -> None:
     
     dp = Dispatcher(
         lifespan=lifespan,
-        db_url=settings.DATABASE_URL,
     )
     
     i18n_middleware = I18nMiddleware(
-        middleware=FluentRuntimeMiddleware(
+        core=FluentRuntimeCore(
             path="locales/{locale}/messages.ftl",
             locales=["en", "ru"],
             default_locale="en",
         ),
         default_locale="en",
-        manager_locator=lambda message: "en",
+        locale_key="locale",
     )
     
-    dp.update.middleware(DbSessionMiddleware(url=settings.DATABASE_URL))
+    dp.update.middleware(DatabaseSessionMiddleware())
     dp.update.middleware(i18n_middleware)
     
     dp.include_routers(
-        user.router,
-        economy.router,
+        start.router,
+        balance.router,
+        referral.router,
         tasks.router,
+        withdraw.router,
+        promo.router,
         admin.router,
     )
     
     try:
-        await dp.start_polling(bot, i18n=i18n_middleware)
+        await dp.start_polling(bot)
     finally:
         await bot.session.close()
 

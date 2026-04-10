@@ -4,7 +4,7 @@ Database models for the Telegram bot.
 from datetime import datetime
 from sqlalchemy import (
     Column, Integer, String, Float, Boolean, DateTime, 
-    ForeignKey, Text, Enum as SQLEnum
+    ForeignKey, Text, Enum as SQLEnum, BigInteger
 )
 from sqlalchemy.orm import declarative_base, relationship
 import enum
@@ -93,6 +93,7 @@ class Task(Base):
     reward = Column(Float, default=0.0)
     category = Column(String(50), default="subscribe")
     check_type = Column(String(20), default="auto")  # "auto" or "manual"
+    required_screenshots_count = Column(Integer, default=1)  # How many screenshots required
     is_active = Column(Boolean, default=True)
     
     # Status
@@ -121,6 +122,8 @@ class TaskCompletion(Base):
     task_id = Column(Integer, ForeignKey("tasks.id"), nullable=False)
     status = Column(SQLEnum(TaskStatus), default=TaskStatus.PENDING)
     screenshot_file_id = Column(String(255), nullable=True)
+    forwarded_from_chat_id = Column(BigInteger, nullable=True)
+    screenshots_count = Column(Integer, default=0)  # Track how many screenshots sent
     created_at = Column(DateTime, default=datetime.utcnow)
     
     task = relationship("Task", back_populates="completions")

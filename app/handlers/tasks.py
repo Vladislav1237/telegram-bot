@@ -21,6 +21,7 @@ router = Router()
 
 class AdminTaskStates(StatesGroup):
     waiting_category = State()
+    waiting_check_type = State()
     waiting_link = State()
     waiting_description = State()
     waiting_reward = State()
@@ -28,6 +29,7 @@ class AdminTaskStates(StatesGroup):
 
 class TaskUserStates(StatesGroup):
     waiting_screenshot = State()
+    screenshot_count = State()
 
 
 def get_lang(user) -> str:
@@ -512,31 +514,29 @@ async def handle_task_submit(callback: types.CallbackQuery, session, user, state
         await callback.answer(msg, show_alert=True)
         return
     
-    # Ask for screenshot
+    # Ask for screenshot or forwarded message
     await state.set_state(TaskUserStates.waiting_screenshot)
     await state.update_data(submit_task_id=task_id)
     logging.info(f"[TASK_SUBMIT] State set, task_id={task_id}")
     
-    prompt = "📸 Отправьте скриншот выполненного задания:" if lang == "ru" else "📸 Send a screenshot of the completed task:"
+    prompt = (
+        "📸 Отправьте скриншот ИЛИ перешлите сообщение из канала/бота:\n\n"
+        "Для проверки бот проверит ID чата, откуда пришло сообщение." 
+        if lang == "ru" 
+        else "📸 Send a screenshot OR forward a message from the channel/bot:\n\n"
+        "The bot will check the chat ID where the message came from."
+    )
     await callback.message.edit_text(prompt)
     await callback.answer()
 
 
-# ── Handle screenshot for manual task ─────────────────────────────
+# ── Handle screenshot/forward for manual task ─────────────────────────────
 @router.message(TaskUserStates.waiting_screenshot)
 async def handle_manual_screenshot(message: types.Message, session, user, state: FSMContext):
     logging.info(f"[SCREENSHOT] Received from user {message.from_user.id}")
     logging.info(f"[SCREENSHOT] message.photo = {message.photo}")
-    logging.info(f"[SCREENSHOT] message.content_type = {message.content_type}")
     
     try:
-        # Check if it's a photo
-        if not message.photo:
-            logging.info("[SCREENSHOT] No photo in message")
-            lang = get_lang(user)
-            await message.answer("📸 Пожалуйста, отправьте фото/скриншот." if lang == "ru" else "📸 Please send a photo/screenshot.")
-            return
-        
         lang = get_lang(user)
         
         data = await state.get_data()
@@ -557,29 +557,59 @@ async def handle_manual_screenshot(message: types.Message, session, user, state:
             await state.clear()
             return
         
-        # Get photo file_id
-        photo_file_id = message.photo[-1].file_id
-        logging.info(f"[SCREENSHOT] Got photo file_id: {photo_file_id[:30]}...")
+        # Get photo file_id or forwarded chat ID
+        photo_file_id = None
+        forwarded_chat_id = None
         
-        # Create completion record with screenshot
+        if message.photo:
+            photo_file_id = message.photo[-1].file_id
+            logging.info(f"[SCREENSHOT] Got photo file_id: {photo_file_id[:30]}...")
+        
+        # Check for forwarded message from a channel
+        if hasattr(message, 'forward_from_chat') and message.forward_from_chat:
+            forwarded_chat_id = message.forward_from_chat.id
+            logging.info(f"[SCREENSHOT] Forwarded from chat ID: {forwarded_chat_id}")
+        elif hasattr(message, 'forward_origin') and message.forward_origin:
+            # For Telegram Bot API 7.0+
+            if hasattr(message.forward_origin, 'chat'):
+                forwarded_chat_id = message.forward_origin.chat.id
+                logging.info(f"[SCREENSHOT] Forwarded from chat ID (new API): {forwarded_chat_id}")
+        
+        # Validate: either photo or forwarded message must be present
+        if not photo_file_id and not forwarded_chat_id:
+            await message.answer(
+                "📸 Пожалуйста, отправьте фото/скриншот ИЛИ перешлите сообщение из канала." 
+                if lang == "ru" 
+                else "📸 Please send a photo/screenshot OR forward a message from the channel."
+            )
+            return
+        
+        # Create completion record with screenshot and/or forwarded chat ID
         await task_repo.create_completion(
             user_id=user.id,
             task_id=task_id,
             screenshot_file_id=photo_file_id,
+            forwarded_from_chat_id=forwarded_chat_id,
         )
         logging.info(f"[SCREENSHOT] Completion created for task {task_id}")
+        
+        status_parts = []
+        if photo_file_id:
+            status_parts.append("Скриншот получен." if lang == "ru" else "Screenshot received.")
+        if forwarded_chat_id:
+            status_parts.append("Сообщение переслано." if lang == "ru" else "Message forwarded.")
         
         if lang == "ru":
             text = (
                 f"✅ Задание #{task_id} отправлено на проверку!\n\n"
-                f"📸 Скриншот получен.\n"
+                f"📸 {' '.join(status_parts)}\n"
                 f"💰 Награда {task.reward:.4f} TON будет начислена\n"
                 f"после подтверждения админом."
             )
         else:
             text = (
                 f"✅ Task #{task_id} submitted for review!\n\n"
-                f"📸 Screenshot received.\n"
+                f"📸 {' '.join(status_parts)}\n"
                 f"💰 Reward of {task.reward:.4f} TON will be credited\n"
                 f"after admin confirmation."
             )
@@ -710,6 +740,7 @@ async def admin_select_category(
         logging.info(f"[ADMIN] Category: {category}")
 
         await state.update_data(admin_task_category=category)
+        await state.set_state(AdminTaskStates.waiting_check_type)
 
         # Ask for check type (auto or manual)
         builder = InlineKeyboardBuilder()
@@ -742,12 +773,6 @@ async def admin_select_category(
             check_type_text if lang == "ru" else check_type_text_en,
             reply_markup=builder.as_markup(),
         )
-        await callback.answer()
-        logging.info("[ADMIN] admin_select_category completed")
-    except Exception as e:
-        logging.error(f"[ADMIN] Error in admin_select_category: {e}", exc_info=True)
-        await callback.answer(f"⚠️ Error: {str(e)[:50]}", show_alert=True)
-
         await callback.answer()
         logging.info("[ADMIN] admin_select_category completed")
     except Exception as e:

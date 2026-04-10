@@ -54,10 +54,14 @@ class Task(BaseModel):
     title: Mapped[str] = mapped_column(String(255))
     description: Mapped[str] = mapped_column(Text)
     reward: Mapped[float] = mapped_column(Float)
+    category: Mapped[str] = mapped_column(String(50), default="custom")
+    check_type: Mapped[str] = mapped_column(String(20), default="manual")
+    target_username: Mapped[str | None] = mapped_column(String(100), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now()
     )
+    created_by: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
 
 
 class UserTask(BaseModel):

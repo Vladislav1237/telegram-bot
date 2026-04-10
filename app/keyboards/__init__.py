@@ -120,6 +120,40 @@ def get_admin_menu_keyboard(lang: str = "en") -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
+def get_task_category_keyboard(lang: str = "en") -> InlineKeyboardMarkup:
+    """Keyboard for selecting task category when creating a task."""
+    builder = InlineKeyboardBuilder()
+    if lang == "ru":
+        builder.button(text="📢 Подписка", callback_data="task_cat_subscribe")
+        builder.button(text="🤖 Боты", callback_data="task_cat_bots")
+        builder.button(text="👥 Группы", callback_data="task_cat_groups")
+        builder.button(text="✍️ Свое задание", callback_data="task_cat_custom")
+        builder.button(text="🔙 Назад", callback_data="admin_panel")
+    else:
+        builder.button(text="📢 Subscribe", callback_data="task_cat_subscribe")
+        builder.button(text="🤖 Bots", callback_data="task_cat_bots")
+        builder.button(text="👥 Groups", callback_data="task_cat_groups")
+        builder.button(text="✍️ Custom Task", callback_data="task_cat_custom")
+        builder.button(text="🔙 Back", callback_data="admin_panel")
+    builder.adjust(2, 2, 1)
+    return builder.as_markup()
+
+
+def get_task_check_type_keyboard(lang: str = "en") -> InlineKeyboardMarkup:
+    """Keyboard for selecting task check type (auto/manual)."""
+    builder = InlineKeyboardBuilder()
+    if lang == "ru":
+        builder.button(text="🤖 Авто-проверка", callback_data="task_check_auto")
+        builder.button(text="📸 Ручная проверка", callback_data="task_check_manual")
+        builder.button(text="🔙 Назад", callback_data="admin_task_create")
+    else:
+        builder.button(text="🤖 Auto Check", callback_data="task_check_auto")
+        builder.button(text="📸 Manual Check", callback_data="task_check_manual")
+        builder.button(text="🔙 Back", callback_data="admin_task_create")
+    builder.adjust(1, 1)
+    return builder.as_markup()
+
+
 def get_withdraw_keyboard(lang: str = "en") -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     if lang == "ru":

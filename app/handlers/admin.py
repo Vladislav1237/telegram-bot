@@ -13,7 +13,8 @@ from app.database.repositories import (
 from app.models import TaskStatus, WithdrawalStatus
 from app.keyboards import (
     get_task_review_keyboard, get_withdrawal_action_keyboard,
-    get_admin_menu_keyboard, get_back_keyboard
+    get_admin_menu_keyboard, get_back_keyboard, get_tasks_keyboard,
+    get_task_category_keyboard, get_task_check_type_keyboard
 )
 from app.config import config
 
@@ -30,6 +31,14 @@ class AdminStates(StatesGroup):
     waiting_for_promo_uses = State()
     waiting_for_reject_reason = State()
     waiting_for_reject_withdraw_reason = State()
+    # States for creating tasks
+    waiting_for_task_category = State()
+    waiting_for_task_check_type = State()
+    waiting_for_task_title = State()
+    waiting_for_task_description = State()
+    waiting_for_task_target = State()
+    waiting_for_task_reward = State()
+    waiting_for_task_screenshots_count = State()
 
 
 # ── /admin command ───────────────────────────────────────────────
@@ -96,6 +105,11 @@ async def handle_admin_tasks_queue(callback: types.CallbackQuery, session, user)
         text += f"{lbl_desc} {task.description}\n"
     text += f"{lbl_reward} {task.reward:.4f} TON\n"
     text += f"{lbl_submitted} {task.created_at.strftime('%Y-%m-%d %H:%M')}\n"
+    
+    # Show forwarded chat info if available
+    if hasattr(task, 'forwarded_from_chat_id') and task.forwarded_from_chat_id:
+        lbl_forwarded = "📬 Переслано из:" if lang == "ru" else "📬 Forwarded from:"
+        text += f"{lbl_forwarded} {task.forwarded_from_chat_id}\n"
 
     await callback.message.edit_text(text, reply_markup=get_task_review_keyboard(task.id))
 
@@ -108,6 +122,15 @@ async def handle_admin_tasks_queue(callback: types.CallbackQuery, session, user)
             photo=task.screenshot_file_id,
             caption=screenshot_caption,
         )
+    
+    # Show info about forwarded message
+    if hasattr(task, 'forwarded_from_chat_id') and task.forwarded_from_chat_id:
+        forward_info = (
+            f"📬 Сообщение переслано из чата ID: {task.forwarded_from_chat_id}" if lang == "ru"
+            else f"📬 Message forwarded from chat ID: {task.forwarded_from_chat_id}"
+        )
+        await callback.message.answer(forward_info)
+    
     await callback.answer()
 
 
@@ -648,4 +671,286 @@ async def handle_task_delete(callback: types.CallbackQuery, session, user):
     
     await callback.answer("✅ Удалено!", show_alert=True)
     await handle_admin_all_tasks(callback, session, user)
+
+
+# ── Create Task (Admin) ────────────────────────────────────────────
+@router.callback_query(F.data == "admin_task_create")
+async def handle_admin_task_create(callback: types.CallbackQuery, state: FSMContext, user):
+    if user.telegram_id not in config.ADMIN_IDS:
+        await callback.answer("⛔️ Access denied.", show_alert=True)
+        return
+
+    lang = get_lang(user)
+    title = (
+        "➕ Создать задание\n\nВыберите категорию:" if lang == "ru"
+        else "➕ Create Task\n\nSelect category:"
+    )
+    await callback.message.answer(
+        title,
+        reply_markup=get_task_category_keyboard(lang),
+    )
+    await state.set_state(AdminStates.waiting_for_task_category)
     await callback.answer()
+
+
+@router.callback_query(F.data.startswith("task_cat_"))
+async def handle_task_category_select(callback: types.CallbackQuery, state: FSMContext, user):
+    if user.telegram_id not in config.ADMIN_IDS:
+        await callback.answer("⛔️ Access denied.", show_alert=True)
+        return
+
+    lang = get_lang(user)
+    category = callback.data.replace("task_cat_", "")
+    await state.update_data(task_category=category)
+
+    # Now ask for check type
+    check_title = (
+        "🔍 Выберите тип проверки:" if lang == "ru"
+        else "🔍 Select check type:"
+    )
+    await callback.message.answer(
+        check_title,
+        reply_markup=get_task_check_type_keyboard(lang),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("task_check_"))
+async def handle_task_check_type_select(callback: types.CallbackQuery, state: FSMContext, user):
+    if user.telegram_id not in config.ADMIN_IDS:
+        await callback.answer("⛔️ Access denied.", show_alert=True)
+        return
+
+    lang = get_lang(user)
+    check_type = callback.data.replace("task_check_", "")
+    await state.update_data(task_check_type=check_type)
+
+    # Now ask for task title
+    title_prompt = (
+        "📝 Введите название задания:" if lang == "ru"
+        else "📝 Enter task title:"
+    )
+    await callback.message.answer(
+        title_prompt,
+        reply_markup=get_back_keyboard("admin_panel"),
+    )
+    await state.set_state(AdminStates.waiting_for_task_title)
+    await callback.answer()
+
+
+@router.message(AdminStates.waiting_for_task_title)
+async def process_task_title(message: types.Message, state: FSMContext, user):
+    lang = get_lang(user)
+    title = message.text.strip()
+    if not title:
+        err = "❌ Название не может быть пустым." if lang == "ru" else "❌ Title cannot be empty."
+        await message.answer(err)
+        return
+    
+    await state.update_data(task_title=title)
+    
+    desc_prompt = (
+        "📄 Введите описание задания (или ссылку):" if lang == "ru"
+        else "📄 Enter task description (or link):"
+    )
+    await message.answer(
+        desc_prompt,
+        reply_markup=get_back_keyboard("admin_panel"),
+    )
+    await state.set_state(AdminStates.waiting_for_task_description)
+
+
+@router.message(AdminStates.waiting_for_task_description)
+async def process_task_description(message: types.Message, state: FSMContext, user):
+    lang = get_lang(user)
+    description = message.text.strip()
+    if not description:
+        err = "❌ Описание не может быть пустым." if lang == "ru" else "❌ Description cannot be empty."
+        await message.answer(err)
+        return
+    
+    await state.update_data(task_description=description)
+    
+    # For auto check with subscribe/bots/groups categories, ask for target username
+    data = await state.get_data()
+    check_type = data.get("task_check_type", "manual")
+    category = data.get("task_category", "custom")
+    
+    if check_type == "auto" and category in ["subscribe", "bots", "groups"]:
+        username_prompt = (
+            "📢 Введите юзернейм канала/бота/группы (без @):" if lang == "ru"
+            else "📢 Enter channel/bot/group username (without @):"
+        )
+        await message.answer(
+            username_prompt,
+            reply_markup=get_back_keyboard("admin_panel"),
+        )
+        await state.set_state(AdminStates.waiting_for_task_target)
+        return
+    
+    # For manual tasks, ask for required screenshots count
+    if check_type == "manual":
+        screenshots_prompt = (
+            "📸 Сколько скриншотов нужно отправить? (1-5):" if lang == "ru"
+            else "📸 How many screenshots required? (1-5):"
+        )
+        await message.answer(
+            screenshots_prompt,
+            reply_markup=get_back_keyboard("admin_panel"),
+        )
+        await state.set_state(AdminStates.waiting_for_task_screenshots_count)
+        return
+    
+    reward_prompt = (
+        "💰 Введите награду в TON:" if lang == "ru"
+        else "💰 Enter reward amount in TON:"
+    )
+    await message.answer(
+        reward_prompt,
+        reply_markup=get_back_keyboard("admin_panel"),
+    )
+    await state.set_state(AdminStates.waiting_for_task_reward)
+
+
+@router.message(AdminStates.waiting_for_task_target)
+async def process_task_target(message: types.Message, state: FSMContext, user):
+    lang = get_lang(user)
+    target_username = message.text.strip()
+    if not target_username:
+        err = "❌ Юзернейм не может быть пустым." if lang == "ru" else "❌ Username cannot be empty."
+        await message.answer(err)
+        return
+    
+    # Remove @ if present
+    target_username = target_username.replace("@", "")
+    await state.update_data(task_target_username=target_username)
+    
+    # For manual tasks with target, still need screenshots count
+    data = await state.get_data()
+    check_type = data.get("task_check_type", "manual")
+    
+    if check_type == "manual":
+        screenshots_prompt = (
+            "📸 Сколько скриншотов нужно отправить? (1-5):" if lang == "ru"
+            else "📸 How many screenshots required? (1-5):"
+        )
+        await message.answer(
+            screenshots_prompt,
+            reply_markup=get_back_keyboard("admin_panel"),
+        )
+        await state.set_state(AdminStates.waiting_for_task_screenshots_count)
+        return
+    
+    reward_prompt = (
+        "💰 Введите награду в TON:" if lang == "ru"
+        else "💰 Enter reward amount in TON:"
+    )
+    await message.answer(
+        reward_prompt,
+        reply_markup=get_back_keyboard("admin_panel"),
+    )
+    await state.set_state(AdminStates.waiting_for_task_reward)
+
+
+@router.message(AdminStates.waiting_for_task_screenshots_count)
+async def process_task_screenshots_count(message: types.Message, state: FSMContext, user):
+    lang = get_lang(user)
+    try:
+        count = int(message.text.strip())
+    except ValueError:
+        err = "❌ Введите число." if lang == "ru" else "❌ Enter a number."
+        await message.answer(err)
+        return
+    
+    if count < 1 or count > 5:
+        err = "❌ Должно быть от 1 до 5." if lang == "ru" else "❌ Must be between 1 and 5."
+        await message.answer(err)
+        return
+    
+    await state.update_data(task_screenshots_count=count)
+    
+    reward_prompt = (
+        "💰 Введите награду в TON:" if lang == "ru"
+        else "💰 Enter reward amount in TON:"
+    )
+    await message.answer(
+        reward_prompt,
+        reply_markup=get_back_keyboard("admin_panel"),
+    )
+    await state.set_state(AdminStates.waiting_for_task_reward)
+
+
+@router.message(AdminStates.waiting_for_task_reward)
+async def process_task_reward(message: types.Message, state: FSMContext, session, user):
+    lang = get_lang(user)
+    try:
+        reward = float(message.text.strip())
+    except ValueError:
+        err = "❌ Введите число." if lang == "ru" else "❌ Enter a number."
+        await message.answer(err)
+        return
+    
+    if reward <= 0:
+        err = "❌ Награда должна быть больше 0." if lang == "ru" else "❌ Reward must be > 0."
+        await message.answer(err)
+        return
+
+    data = await state.get_data()
+    category = data.get("task_category", "custom")
+    check_type = data.get("task_check_type", "manual")
+    title = data.get("task_title", "")
+    description = data.get("task_description", "")
+    target_username = data.get("task_target_username")
+    screenshots_count = data.get("task_screenshots_count", 1)
+
+    task_repo = TaskRepository(session)
+    admin_log_repo = AdminLogRepository(session)
+
+    # Create the task
+    new_task = await task_repo.create(
+        title=title,
+        description=description,
+        reward=reward,
+        category=category,
+        check_type=check_type,
+        target_username=target_username,
+        required_screenshots_count=screenshots_count,
+        is_active=True,
+        created_by=user.id,
+    )
+
+    await admin_log_repo.create(
+        admin_id=user.telegram_id,
+        action="create_task",
+        target_type="task",
+        target_id=new_task.id,
+        details=f"Created task #{new_task.id}: {title}",
+    )
+
+    await state.clear()
+
+    lbl_title = "📝 Название:" if lang == "ru" else "📝 Title:"
+    lbl_desc = "📄 Описание:" if lang == "ru" else "📄 Description:"
+    lbl_reward = "💰 Награда:" if lang == "ru" else "💰 Reward:"
+    lbl_cat = "📂 Категория:" if lang == "ru" else "📂 Category:"
+    lbl_check = "🔍 Проверка:" if lang == "ru" else "🔍 Check type:"
+    created_title = "✅ Задание создано!" if lang == "ru" else "✅ Task created!"
+
+    check_text = "🤖 Авто" if check_type == "auto" else "📸 Ручная"
+    cat_text = {
+        "subscribe": "📢 Подписка" if lang == "ru" else "📢 Subscribe",
+        "bots": "🤖 Боты" if lang == "ru" else "🤖 Bots",
+        "groups": "👥 Группы" if lang == "ru" else "👥 Groups",
+        "custom": "✍️ Свое" if lang == "ru" else "✍️ Custom",
+    }.get(category, category)
+
+    await message.answer(
+        f"{created_title}\n\n"
+        f"{lbl_title} {title}\n"
+        f"{lbl_desc} {description}\n"
+        f"{lbl_reward} {reward:.4f} TON\n"
+        f"{lbl_cat} {cat_text}\n"
+        f"{lbl_check} {check_text}\n"
+        f"ID: #{new_task.id}",
+        reply_markup=get_admin_menu_keyboard(lang),
+    )
