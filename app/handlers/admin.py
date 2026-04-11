@@ -5,6 +5,7 @@ from aiogram import Router, F, types
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from app.database.repositories import (
     TaskRepository, WithdrawalRepository, UserRepository,
@@ -101,7 +102,7 @@ async def handle_admin_tasks_queue(callback: types.CallbackQuery, session, user)
 
     text = (
         f"{lbl_review}\n\n"
-        f"{lbl_user} @{task.user.username or 'N/A'} ({task.user.telegram_id})\n"
+        f"{lbl_user} \\@{task.user.username or 'N/A'} ({task.user.telegram_id})\n"
         f"{lbl_title} {task.title}\n"
     )
     if task.description:
@@ -253,7 +254,7 @@ async def handle_admin_withdrawals_queue(callback: types.CallbackQuery, session,
 
     text = (
         f"{lbl_withdrawal}\n\n"
-        f"👤 @{w.user.username or 'N/A'} ({w.user.telegram_id})\n"
+        f"👤 \\@{w.user.username or 'N/A'} ({w.user.telegram_id})\n"
         f"{lbl_amount} {w.amount:.4f} TON\n"
         f"{lbl_wallet} <code>{w.wallet_address}</code>\n"
         f"⏳ {w.created_at.strftime('%Y-%m-%d %H:%M')}"
@@ -447,8 +448,6 @@ async def handle_admin_promo_list(callback: types.CallbackQuery, session, user):
         return
 
     text = "🏷️ Промокоды\n\n" if lang == "ru" else "🏷️ Promo Codes\n\n"
-
-    from aiogram.utils.keyboard import InlineKeyboardBuilder
     builder = InlineKeyboardBuilder()
 
     for p in promos[:15]:
@@ -518,7 +517,7 @@ async def handle_admin_users(callback: types.CallbackQuery, session, user):
     )
     text = header
     for u in users[:20]:
-        text += f"• @{u.username or 'N/A'} — {u.balance:.4f} TON\n"
+        text += f"• \\@{u.username or 'N/A'} — {u.balance:.4f} TON\n"
 
     if len(users) > 20:
         more = (
@@ -748,8 +747,6 @@ async def handle_admin_all_tasks(callback: types.CallbackQuery, session, user):
         text += f"\n... и ещё {len(tasks) - 10} заданий"
     
     text += "\n\nНажмите на задание для управления:" if lang == "ru" else "\nClick on a task to manage:"
-    
-    from aiogram.utils.keyboard import InlineKeyboardBuilder
     builder = InlineKeyboardBuilder()
     
     for task in tasks[:10]:
@@ -785,8 +782,6 @@ async def handle_task_edit(callback: types.CallbackQuery, session, user):
         return
     
     completions = await task_repo.get_completion_count(task.id)
-    
-    from aiogram.utils.keyboard import InlineKeyboardBuilder
     builder = InlineKeyboardBuilder()
     
     # Always show both buttons

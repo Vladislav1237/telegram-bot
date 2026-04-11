@@ -5,28 +5,15 @@ __pycache__/
 *.pyo
 *.pyd
 
+# Logs
+*.log
+logs/
+
+# Database
+bot.db
+
 # Environment
-.venv/
-venv/
 .env
 .env.local
 .env.*
-
-# Logs
-*.log
-
-# Coverage
-.coverage
-coverage/
-htmlcov/
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
 ```

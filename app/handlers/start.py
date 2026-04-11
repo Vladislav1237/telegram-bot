@@ -274,43 +274,43 @@ async def handle_help(callback: types.CallbackQuery):
         
         if lang == "ru":
             text = (
-                "🆘 **Помощь**\n\n"
-                "📋 **Как работать с ботом:**\n"
+                "🆘 <b>Помощь</b>\n\n"
+                "📋 <b>Как работать с ботом:</b>\n"
                 "1. Нажмите 📋 Задания, чтобы выбрать категорию\n"
                 "2. Выберите задание и выполните условия\n"
                 "3. Для ручной проверки отправьте скриншоты или перешлите сообщение\n"
                 "4. Ожидайте подтверждения от администратора\n\n"
-                "💰 **Баланс:**\n"
+                "💰 <b>Баланс:</b>\n"
                 "- Зарабатывайте TON, выполняя задания\n"
                 "- Минимальный вывод: 1 TON\n"
                 "- Вывод средств в разделе 💸 Вывести\n\n"
-                "👥 **Рефералы:**\n"
+                "👥 <b>Рефералы:</b>\n"
                 "- Приглашайте друзей и получайте бонусы\n"
                 "- Ваша реферальная ссылка в разделе 👥 Рефералы\n\n"
-                "❓ **Вопросы?**\n"
+                "❓ <b>Вопросы?</b>\n"
                 "Свяжитесь с поддержкой: @support_username"
             )
         else:
             text = (
-                "🆘 **Help**\n\n"
-                "📋 **How to use the bot:**\n"
+                "🆘 <b>Help</b>\n\n"
+                "📋 <b>How to use the bot:</b>\n"
                 "1. Tap 📋 Tasks to select a category\n"
                 "2. Choose a task and complete the requirements\n"
                 "3. For manual check, send screenshots or forward a message\n"
                 "4. Wait for admin approval\n\n"
-                "💰 **Balance:**\n"
+                "💰 <b>Balance:</b>\n"
                 "- Earn TON by completing tasks\n"
                 "- Minimum withdrawal: 1 TON\n"
                 "- Withdraw funds in 💸 Withdraw section\n\n"
-                "👥 **Referrals:**\n"
+                "👥 <b>Referrals:</b>\n"
                 "- Invite friends and get bonuses\n"
                 "- Your referral link in 👥 Referrals section\n\n"
-                "❓ **Questions?**\n"
+                "❓ <b>Questions?</b>\n"
                 "Contact support: @support_username"
             )
         
         builder = InlineKeyboardBuilder()
         builder.button(text="🔙 Back", callback_data="main_menu")
         
-        await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="Markdown")
+        await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
         await callback.answer()

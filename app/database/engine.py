@@ -1,22 +1,27 @@
 """
 Database engine and session management.
 """
+import asyncio
+import logging
 from sqlalchemy.ext.asyncio import (
     create_async_engine,
     AsyncSession,
     async_sessionmaker,
 )
-from sqlalchemy.pool import NullPool
+from sqlalchemy.pool import StaticPool
+from sqlalchemy.exc import OperationalError
 
 from app.config import config
 
+logger = logging.getLogger(__name__)
 
-# Create async engine
+# Create async engine with proper settings for SQLite
 engine = create_async_engine(
     config.DATABASE_URL,
     echo=False,
     future=True,
-    poolclass=NullPool,
+    poolclass=StaticPool,  # Use StaticPool for SQLite to avoid locking issues
+    connect_args={"check_same_thread": False} if "sqlite" in config.DATABASE_URL else {},
 )
 
 # Create session maker
@@ -24,6 +29,8 @@ async_session_maker = async_sessionmaker(
     engine,
     class_=AsyncSession,
     expire_on_commit=False,
+    autocommit=False,
+    autoflush=False,
 )
 
 
@@ -53,3 +60,16 @@ async def migrate_check_type():
 async def close_db():
     """Close database connections."""
     await engine.dispose()
+
+
+async def execute_with_retry(func, max_retries=3, delay=0.5):
+    """Execute database operation with retry on lock errors."""
+    for attempt in range(max_retries):
+        try:
+            return await func()
+        except OperationalError as e:
+            if "database is locked" in str(e) and attempt < max_retries - 1:
+                logger.warning(f"Database locked, retrying ({attempt + 1}/{max_retries})...")
+                await asyncio.sleep(delay * (attempt + 1))
+            else:
+                raise

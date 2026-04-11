@@ -7,6 +7,7 @@ import logging
 from datetime import datetime
 from sqlalchemy import select, and_
 from aiogram import Router, F, types
+from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
@@ -531,7 +532,7 @@ async def handle_task_submit(callback: types.CallbackQuery, session, user, state
 
 
 # ── Handle screenshot/forward for manual task ─────────────────────────────
-@router.message(TaskUserStates.waiting_screenshot)
+@router.message(F.text | F.photo | F.forward_from, StateFilter(TaskUserStates.waiting_screenshot))
 async def handle_manual_screenshot(message: types.Message, session, user, state: FSMContext):
     logging.info(f"[SCREENSHOT] Received from user {message.from_user.id}")
     logging.info(f"[SCREENSHOT] message.photo = {message.photo}")
@@ -784,6 +785,7 @@ async def admin_select_category(
 async def admin_select_check_type(
     callback: types.CallbackQuery,
     state: FSMContext,
+    session,
     user,
 ):
     if not user or user.telegram_id not in config.ADMIN_IDS:
@@ -830,13 +832,17 @@ async def admin_select_check_type(
     await callback.answer()
 
 
-@router.message(AdminTaskStates.waiting_link)
+@router.message(StateFilter(AdminTaskStates.waiting_link))
 async def admin_process_link(
     message: types.Message,
     state: FSMContext,
     session,
     user,
 ):
+    # Only process text messages
+    if not message.text:
+        return
+        
     logging.info(f">>> ADMIN_LINK handler CALLED for {message.from_user.id}, text={message.text[:30]}")
     logging.info(f">>> user={user}, session={session}")
     logging.info(f">>> current state: {await state.get_state()}")
@@ -873,7 +879,7 @@ async def admin_process_link(
     logging.info(f"[ADMIN_LINK] Done, now waiting for reward")
 
 
-@router.message(AdminTaskStates.waiting_description)
+@router.message(StateFilter(AdminTaskStates.waiting_description))
 async def admin_process_description(
     message: types.Message,
     state: FSMContext,
@@ -906,7 +912,7 @@ async def admin_process_description(
     await state.set_state(AdminTaskStates.waiting_reward)
 
 
-@router.message(AdminTaskStates.waiting_reward)
+@router.message(StateFilter(AdminTaskStates.waiting_reward))
 async def admin_process_reward(
     message: types.Message,
     state: FSMContext,
