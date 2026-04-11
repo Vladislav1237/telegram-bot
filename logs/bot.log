@@ -1,0 +1,52 @@
+nohup: ignoring input
+2026-04-11 17:39:14,895 - INFO - === Starting Bot ===
+2026-04-11 17:39:14,990 - INFO - DB connected
+2026-04-11 17:39:17,836 - INFO - Bot: @Goodtaskton_bot
+2026-04-11 17:39:18,021 - INFO - Updates flushed
+2026-04-11 17:39:18,024 - INFO - Middlewares setup complete
+2026-04-11 17:39:18,079 - INFO - Registering handlers...
+2026-04-11 17:39:18,079 - INFO - Registered start router
+2026-04-11 17:39:18,079 - INFO - Registered balance router
+2026-04-11 17:39:18,079 - INFO - Registered referral router
+2026-04-11 17:39:18,079 - INFO - Registered tasks router
+2026-04-11 17:39:18,079 - INFO - Registered withdraw router
+2026-04-11 17:39:18,079 - INFO - Registered promo router
+2026-04-11 17:39:18,079 - INFO - Registered admin router
+2026-04-11 17:39:18,079 - INFO - All handlers registered successfully
+2026-04-11 17:39:18,079 - INFO - Handlers registered
+2026-04-11 17:39:18,079 - INFO - Starting polling...
+2026-04-11 17:39:18,090 - INFO - Start polling
+2026-04-11 17:39:18,282 - INFO - Run polling for bot @Goodtaskton_bot id=8399806354 - 'TaskTon'
+2026-04-11 17:41:37,661 - INFO - [SESSION_MW] Message from 807120521
+2026-04-11 17:41:37,720 - INFO - [START] === HANDLER CALLED === for 807120521
+2026-04-11 17:41:37,720 - INFO - [START] message.text='/start'
+2026-04-11 17:41:37,720 - INFO - [START] session=True, user=<app.models.User object at 0x7f6ba9fc85c0>
+2026-04-11 17:41:37,836 - INFO - [START] Keyboard created: inline_keyboard=[[InlineKeyboardButton(text='🇬🇧 English', icon_custom_emoji_id=None, style=None, url=None, callback_data='lang_en', web_app=None, login_url=None, switch_inline_query=None, switch_inline_query_current_chat=None, switch_inline_query_chosen_chat=None, copy_text=None, callback_game=None, pay=None), InlineKeyboardButton(text='🇷🇺 Русский', icon_custom_emoji_id=None, style=None, url=None, callback_data='lang_ru', web_app=None, login_url=None, switch_inline_query=None, switch_inline_query_current_chat=None, switch_inline_query_chosen_chat=None, copy_text=None, callback_game=None, pay=None)]]
+2026-04-11 17:41:38,157 - INFO - [START] ANSWER SENT! message_id=858
+2026-04-11 17:41:38,160 - INFO - [SESSION_MW] Transaction committed for 807120521
+2026-04-11 17:41:38,161 - INFO - Update id=623022770 is handled. Duration 499 ms by bot id=8399806354
+2026-04-11 17:41:39,679 - INFO - [SESSION_MW] CallbackQuery from 807120521
+2026-04-11 17:41:40,511 - INFO - [SESSION_MW] Transaction committed for 807120521
+2026-04-11 17:41:40,512 - INFO - Update id=623022771 is handled. Duration 833 ms by bot id=8399806354
+2026-04-11 17:41:43,878 - INFO - [SESSION_MW] CallbackQuery from 807120521
+2026-04-11 17:41:44,813 - INFO - [SESSION_MW] Transaction committed for 807120521
+2026-04-11 17:41:44,813 - INFO - Update id=623022772 is handled. Duration 937 ms by bot id=8399806354
+2026-04-11 17:41:47,258 - INFO - [SESSION_MW] CallbackQuery from 807120521
+2026-04-11 17:41:47,260 - INFO - [ADMIN] admin_create_task_start called: callback.data=admin_task_create
+2026-04-11 17:41:47,260 - INFO - [ADMIN] User lang: ru
+2026-04-11 17:41:47,623 - INFO - [ADMIN] admin_create_task_start completed
+2026-04-11 17:41:47,624 - INFO - [SESSION_MW] Transaction committed for 807120521
+2026-04-11 17:41:47,624 - INFO - Update id=623022773 is handled. Duration 368 ms by bot id=8399806354
+2026-04-11 17:41:49,822 - INFO - [SESSION_MW] CallbackQuery from 807120521
+2026-04-11 17:41:49,823 - INFO - [ADMIN] admin_select_category called: callback.data=admin_cat_subscribe
+2026-04-11 17:41:49,823 - INFO - [ADMIN] Category: subscribe
+2026-04-11 17:41:50,180 - INFO - [ADMIN] admin_select_category completed
+2026-04-11 17:41:50,181 - INFO - [SESSION_MW] Transaction committed for 807120521
+2026-04-11 17:41:50,181 - INFO - Update id=623022774 is handled. Duration 362 ms by bot id=8399806354
+2026-04-11 17:41:51,135 - INFO - [SESSION_MW] CallbackQuery from 807120521
+2026-04-11 17:41:51,714 - INFO - [ADMIN] Set state to waiting_link
+2026-04-11 17:41:52,282 - INFO - [SESSION_MW] Transaction committed for 807120521
+2026-04-11 17:41:52,283 - INFO - Update id=623022775 is handled. Duration 1150 ms by bot id=8399806354
+2026-04-11 17:41:58,639 - INFO - [SESSION_MW] Message from 807120521
+2026-04-11 17:41:58,641 - INFO - [SESSION_MW] Transaction committed for 807120521
+2026-04-11 17:41:58,642 - INFO - Update id=623022776 is handled. Duration 3 ms by bot id=8399806354

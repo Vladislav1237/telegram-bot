@@ -26,20 +26,20 @@ class DatabaseSessionMiddleware(BaseMiddleware):
         
         logger.info(f"[SESSION_MW] {event_type} from {user_id}")
         
-        # Get session - don't commit here, let handler commit if needed
+        # Get session with proper transaction handling
         async with db.async_session_maker() as session:
             data["session"] = session
             try:
                 result = await handler(event, data)
-                # Don't commit here - handlers should commit themselves
-                logger.info(f"[SESSION_MW] Handler done for {user_id}")
+                # Commit transaction after successful handler execution
+                await session.commit()
+                logger.info(f"[SESSION_MW] Transaction committed for {user_id}")
                 return result
             except Exception as e:
                 logger.error(f"[SESSION_MW] Handler error: {e}", exc_info=True)
                 await session.rollback()
                 raise
-            finally:
-                await session.close()
+            # Session will be closed automatically by async context manager
 
 
 def setup_session_middleware(dp):
